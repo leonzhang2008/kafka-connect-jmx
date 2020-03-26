@@ -34,10 +34,7 @@ import javax.management.remote.JMXServiceURL;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.rmi.UnmarshalException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class JmxSourceTask extends SourceTask {
 
@@ -56,6 +53,7 @@ public class JmxSourceTask extends SourceTask {
     private JMXServiceURL jmxServiceUrl;
     private int maxConnectionAttempts;
     private long connectionRetryBackoff;
+    private String domainWhite;
 
     private Map<String, Object> environment = null;
     private JMXConnector jmxConnector = null;
@@ -69,6 +67,7 @@ public class JmxSourceTask extends SourceTask {
     @Override
     public void start(Map<String, String> props) {
         topic = props.get(JmxSourceConnector.TOPIC_CONFIG);
+        domainWhite = props.get(JmxSourceConnector.DOMAIN_WHITE);
         if (topic == null)
             throw new ConnectException("JmxSourceTask config missing " + JmxSourceConnector.TOPIC_CONFIG + " setting");
         String jmxUrl = props.get(JmxSourceConnector.JMX_URL_CONF);
@@ -97,6 +96,21 @@ public class JmxSourceTask extends SourceTask {
                 try {
                     MBeanInfo mBeanInfo = getMBeanServerConnection().getMBeanInfo(objectName);
                     Map<String, String> bean = new HashMap<>();
+                    String domain = objectName.getDomain();
+                    // check domain white
+                    if (!domainWhite.isEmpty()) {
+                        String[] array = domainWhite.split(",");
+                        boolean res = Arrays.asList(array).contains(domain);
+                        if(!res) {
+                            continue;
+                        }
+                    }
+                    bean.put("__domain", domain);
+                    // add tag field
+                    Map<String, String> props = objectName.getKeyPropertyList();
+                    for(Map.Entry<String, String> e:props.entrySet()){
+                        bean.put("__"+ e.getKey(), e.getValue());
+                    }
                     //log.trace("Getting attributes of MBean {} from JMX service {}", objectName, jmxServiceUrl);
                     for (MBeanAttributeInfo mBeanAttributeInfo : mBeanInfo.getAttributes()) {
                         if (!mBeanAttributeInfo.isReadable()) {

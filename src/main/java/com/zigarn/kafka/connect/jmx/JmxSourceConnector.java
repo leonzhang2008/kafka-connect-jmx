@@ -36,6 +36,7 @@ public class JmxSourceConnector extends SourceConnector {
     public static final String JMX_PASSWORD_CONF = "jmx.password";
     public static final String CONNECTION_ATTEMPTS_CONF = "connection.attempts";
     public static final String CONNECTION_BACKOFF_CONF = "connection.backoff.ms";
+    public static final String DOMAIN_WHITE = "domain.white";
 
     private static final ConfigDef CONFIG_DEF = new ConfigDef()
             .define(TOPIC_CONFIG, Type.STRING, Importance.HIGH, "The topic to publish data to")
@@ -43,7 +44,8 @@ public class JmxSourceConnector extends SourceConnector {
             .define(JMX_USERNAME_CONF, Type.STRING, "", Importance.MEDIUM, "The username to connect to JMX")
             .define(JMX_PASSWORD_CONF, Type.PASSWORD, "", Importance.MEDIUM, "The password to connect to JMX")
             .define(CONNECTION_ATTEMPTS_CONF, Type.INT, 3, ConfigDef.Range.atLeast(0), Importance.LOW, "Maximum number of attempts to retrieve a JMX connection")
-            .define(CONNECTION_BACKOFF_CONF, Type.LONG, 10000L, ConfigDef.Range.atLeast(0L), Importance.LOW, "Backoff time in milliseconds between connection attempts");
+            .define(CONNECTION_BACKOFF_CONF, Type.LONG, 10000L, ConfigDef.Range.atLeast(0L), Importance.LOW, "Backoff time in milliseconds between connection attempts")
+            .define(DOMAIN_WHITE, Type.STRING, "", Importance.LOW, "Jmx domain white list");
 
     private String topic;
     private String jmxUrl;
@@ -51,6 +53,7 @@ public class JmxSourceConnector extends SourceConnector {
     private Password jmxPassword;
     private Integer maxConnectionAttempts;
     private Long connectionRetryBackoff;
+    private String domainWhite;
 
     @Override
     public String version() {
@@ -66,6 +69,7 @@ public class JmxSourceConnector extends SourceConnector {
         jmxPassword = (Password) parsedProps.get(JMX_PASSWORD_CONF);
         maxConnectionAttempts = (Integer) parsedProps.get(CONNECTION_ATTEMPTS_CONF);
         connectionRetryBackoff = (Long) parsedProps.get(CONNECTION_BACKOFF_CONF);
+        domainWhite = (String) parsedProps.get(DOMAIN_WHITE);
         if (topic.contains(","))
             throw new ConfigException("JmxSourceConnector should only have a single topic.");
     }
@@ -86,6 +90,7 @@ public class JmxSourceConnector extends SourceConnector {
         config.put(JMX_PASSWORD_CONF, jmxPassword.value());
         config.put(CONNECTION_ATTEMPTS_CONF, maxConnectionAttempts.toString());
         config.put(CONNECTION_BACKOFF_CONF, connectionRetryBackoff.toString());
+        config.put(DOMAIN_WHITE, domainWhite);
 
         configs.add(config);
         return configs;
